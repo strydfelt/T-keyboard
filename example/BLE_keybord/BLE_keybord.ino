@@ -1,7 +1,7 @@
-#define TFT_HIGH  40
+#define TFT_HIGH 40
 #define TFT_WIDE 160
 #define GAP 8
-#define keyborad_BL_PIN  9
+#define keyborad_BL_PIN 9
 #define INDICATOR_TEXT_PADDING 2
 #define INDICATOR_BORDER 2
 
@@ -10,7 +10,7 @@
 #include "Arduino.h"
 #include <SPI.h>
 #include "img.h"
-#include<TFT_GC9D01N.h>
+#include <TFT_GC9D01N.h>
 TFT_GC9D01N_Class TFT_099;
 
 #include <BleKeyboard.h>
@@ -18,7 +18,6 @@ BleKeyboard bleKeyboard("T-Keyboard", "ESPRESSIF", 100);
 
 byte rows[] = {0, 3, 18, 12, 11, 6, 7};
 const int rowCount = sizeof(rows) / sizeof(rows[0]);
-
 
 byte cols[] = {1, 4, 5, 19, 13};
 const int colCount = sizeof(cols) / sizeof(cols[0]);
@@ -30,19 +29,18 @@ bool changedValue[colCount][rowCount];
 char keyboard[colCount][rowCount];
 char keyboard_symbol[colCount][rowCount];
 
-
 bool symbolSelected;
 int OffsetX = 0;
 uint16_t flow_i = 0;
 bool keyborad_BL_state = true;
-bool display_connected = true;  //The bluetooth connection is displayed on the screen
+bool display_connected = true; // The bluetooth connection is displayed on the screen
 bool connection_status = false;
 bool case_locking = false;
 bool alt_active = false;
-unsigned long previousMillis_1 = 0; //Millisecond time record
-unsigned long previousMillis_2 = 0; //Millisecond time record
-const long backlight_off_time = 20000;       //Turn off the screen backlight
-const long display_Wait_blue_time = 2000;       //The screen shows waiting for bluetooth connection
+unsigned long previousMillis_1 = 0;       // Millisecond time record
+unsigned long previousMillis_2 = 0;       // Millisecond time record
+const long backlight_off_time = 20000;    // Turn off the screen backlight
+const long display_Wait_blue_time = 2000; // The screen shows waiting for bluetooth connection
 
 void readMatrix();
 bool keyPressed(int colIndex, int rowIndex);
@@ -56,40 +54,50 @@ void altIndicator(bool alt_active);
 void capsIndicator(bool caps_active);
 void symIndicator(bool sym_active);
 
+// for my sanity until i wanna see why DispColor is in portrait
+void drawRect(unsigned int Xstart, unsigned int Ystart, unsigned int Xend, unsigned int Yend, unsigned int color);
+
+void drawRect(unsigned int Xstart, unsigned int Ystart, unsigned int Xend, unsigned int Yend, unsigned int color)
+{
+    TFT_099.DispColor(Ystart, Xstart, Yend, Xend, color);
+}
+
 void symIndicator(bool sym_active)
 {
-    //to parameterize to make re-usable indicator
-    // landscape oriented vars
+    // to parameterize to make re-usable indicator
+    //  landscape oriented vars
     int x = 0;
     int y = 0;
     // activated indicator color
     unsigned int fill = RED;
     unsigned int font_color = WHITE;
     char txt[] = "SYM";
-    int num_chars = sizeof(txt)/sizeof(txt[0]);
+    int num_chars = sizeof(txt) / sizeof(txt[0]);
 
-    if(!sym_active){
+    if (!sym_active)
+    {
         fill = BLACK;
         font_color = GRAY25;
     }
 
     // indicator height
     int height = 20;
-  
-    // assume indicator always there, showing status?
-    // flush left 
-    // int length = 2 * INDICATOR_BORDER + 2 * INDICATOR_TEXT_PADDING + num_chars * GAP;
-    // int full_padding = INDICATOR_BORDER + INDICATOR_TEXT_PADDING;
 
-    
-    //remember DispColor is flipped - bug?
-    // clear white for border - rotated for landscape
-    // can't user overlaying. need to draw rect border. oh boy.
-    // TFT_099.DispColor(y, x, y + height, x + length, WHITE);
-    // background
-    // TFT_099.DispColor(y + INDICATOR_BORDER, x + INDICATOR_BORDER, y + height -INDICATOR_BORDER, x + length - INDICATOR_BORDER, fill);
-    
-    TFT_099.DispStr(txt, y+INDICATOR_TEXT_PADDING, x+20, font_color, fill);
+    // assume indicator always there, showing status?
+    // flush left
+    int length = 2 * INDICATOR_BORDER + 2 * INDICATOR_TEXT_PADDING + num_chars * GAP;
+
+    // draw box
+    // left side
+    drawRect(x, y, x + INDICATOR_BORDER, y + height, RED);
+    // right
+    drawRect(x + length - INDICATOR_BORDER, y, x + length, y + height, BLUE);
+    // bottom
+    drawRect(x, y, x + length, y + INDICATOR_BORDER, GREEN);
+    //  top
+    drawRect(x, y + height, x + length, y + height + INDICATOR_BORDER, GRAY);
+
+    TFT_099.DispStr(txt, x + INDICATOR_TEXT_PADDING + INDICATOR_BORDER, y + height, font_color, fill);
 }
 
 void setup()
@@ -132,7 +140,7 @@ void setup()
     keyboard[4][1] = 'l';
     keyboard[4][2] = 'i';
     keyboard[4][3] = NULL; // Backspace
-    keyboard[4][4] = '$'; //on the left of "Enter"
+    keyboard[4][4] = '$';  // on the left of "Enter"
     keyboard[4][5] = 'm';
     keyboard[4][6] = 'k';
 
@@ -182,68 +190,73 @@ void setup()
 
     bleKeyboard.begin();
 
-    for (int x = 0; x < rowCount; x++) {
-        Serial.print(rows[x]); Serial.println(" as input");
+    for (int x = 0; x < rowCount; x++)
+    {
+        Serial.print(rows[x]);
+        Serial.println(" as input");
         pinMode(rows[x], INPUT);
     }
 
-    for (int x = 0; x < colCount; x++) {
-        Serial.print(cols[x]); Serial.println(" as input-pullup");
+    for (int x = 0; x < colCount; x++)
+    {
+        Serial.print(cols[x]);
+        Serial.println(" as input-pullup");
         pinMode(cols[x], INPUT_PULLUP);
     }
 
     symbolSelected = false;
 
-
     TFT_099.begin();
     TFT_099.backlight(20);
-    // TFT_099.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
+    // clear_screen();
+    // TFT_099.DrawImage(0, 0, 40, 160, liligo_logo);
+    // delay(1000);
+
+    // Flow of the logo
+    //  while (millis() < 6000) {
+    //      for (int j = 0; j < 4; j++) {
+    //          TFT_099.DrawImage(0, (160 - (flow_i + j * 55)), 40, 40, liligo_logo1);
+    //      }
+    //      flow_i++;
+    //      if (flow_i == 55) {
+    //          flow_i = 0;
+    //      }
+    //  }
+
     clear_screen();
-    TFT_099.DrawImage(0, 0, 40, 160, liligo_logo);
-    delay(1000);
-
-    //Flow of the logo
-    // while (millis() < 6000) {
-    //     for (int j = 0; j < 4; j++) {
-    //         TFT_099.DrawImage(0, (160 - (flow_i + j * 55)), 40, 40, liligo_logo1);
-    //     }
-    //     flow_i++;
-    //     if (flow_i == 55) {
-    //         flow_i = 0;
-    //     }
-    // }
-
-    TFT_099.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
     TFT_099.DispStr("TKeyOS v0.0.1", 0, 2, WHITE, BLACK);
+    TFT_099.DispStr("Wait bluetooth...", 0, 20, WHITE, BLACK);
     delay(1000);
-
-    TFT_099.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
-    TFT_099.DispStr("Wait bluetooth...", 0, 2, WHITE, BLACK);
 }
-
 
 void loop()
 {
-    if (alt_active && keyPressed(3, 4)) {//alt+b   Change keyboard backlight status
+    if (alt_active && keyPressed(3, 4))
+    { // alt+b   Change keyboard backlight status
         alt_active = false;
-        TFT_099.DispColor(0, 0, TFT_HIGH, TFT_WIDE, BLACK);
+        clear_screen();
         keyborad_BL_state = !keyborad_BL_state;
         set_keyboard_BL(keyborad_BL_state);
-        clear_screen();
+        // clear_screen();
     }
 
-    if (keyPressed(2, 3)) {  //Right Shift  ,Toggle case locking
+    if (keyPressed(2, 3))
+    { // Right Shift  ,Toggle case locking
         case_locking = !case_locking;
     }
 
-    if (bleKeyboard.isConnected()) {
+    if (bleKeyboard.isConnected())
+    {
         connection_status = true;
-        if (millis() - previousMillis_1  > backlight_off_time) {//No keyboard for 20 seconds. Turn off the screen backlight
+        if (millis() - previousMillis_1 > backlight_off_time)
+        { // No keyboard for 20 seconds. Turn off the screen backlight
             TFT_099.backlight(0);
-            previousMillis_1 = millis();;
+            previousMillis_1 = millis();
+            ;
         }
 
-        if (display_connected) {
+        if (display_connected)
+        {
             TFT_099.backlight(20);
             // TFT_099.DispStr("Bluetooth connected", 0, 2, WHITE, BLACK);
             // TFT_099.DispStr("Bluetooth connected", 0, 22, WHITE, BLACK);
@@ -255,45 +268,53 @@ void loop()
         printMatrix();
 
         // key 3,3 is the enter key
-        if (keyPressed(3, 3)) {
+        if (keyPressed(3, 3))
+        {
             clear_screen();
             Serial.println();
             bleKeyboard.println();
         }
-        //BACKSPACE
-        if (keyPressed(4, 3)) {
-            if (OffsetX < 8) {
+        // BACKSPACE
+        if (keyPressed(4, 3))
+        {
+            if (OffsetX < 8)
+            {
                 OffsetX = 0;
-            } else {
+            }
+            else
+            {
                 OffsetX = OffsetX - GAP;
             }
 
-            TFT_099.DispColor(20, OffsetX, 40, OffsetX+GAP, BLACK);
-            // TFT_099.DispColor(0, OffsetX, 10, OffsetX + GAP, BLUE);
-            // TFT_099.DispColor(0, OffsetX, 20, OffsetX + GAP, BLUE);
+            // clears the last typed char on the top row
+            drawRect(OffsetX, 20, OffsetX + GAP, 40, BLACK);
+        
             bleKeyboard.press(KEY_BACKSPACE);
         }
-        //SHIFT
-        if (keyPressed(1, 6)) {
+        // SHIFT
+        if (keyPressed(1, 6))
+        {
             bleKeyboard.press(KEY_RIGHT_SHIFT);
         }
-        //alt+left shift, trigger ctrl+shift(Switch the input method)
-        if (keyActive(0, 4) && keyPressed(1, 6)) {
+        // alt+left shift, trigger ctrl+shift(Switch the input method)
+        if (keyActive(0, 4) && keyPressed(1, 6))
+        {
             bleKeyboard.press(KEY_RIGHT_CTRL);
             bleKeyboard.press(KEY_RIGHT_SHIFT);
         }
 
         bleKeyboard.releaseAll();
-
-    } else {
-        if (millis() - previousMillis_2 > display_Wait_blue_time ) {
-            TFT_099.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
+    }
+    else
+    {
+        if (millis() - previousMillis_2 > display_Wait_blue_time)
+        {
+            clear_screen();
             TFT_099.DispStr("Pairing...", 0, 2, WHITE, BLACK);
             display_connected = true;
             previousMillis_2 = millis();
         }
     }
-
 }
 
 // Keyboard backlit status
@@ -302,33 +323,27 @@ void set_keyboard_BL(bool state)
     digitalWrite(keyborad_BL_PIN, state);
 }
 
-// display is a portrait display in landscape mode. DispColor coords are flipped (X is Y, Y is X)
 void clear_screen()
 {
     OffsetX = 0;
-    TFT_099.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
-    // makes 1 half blue
-    // TFT_099.DispColor(0, 80, TFT_WIDTH, TFT_HEIGHT, BLUE);
-
-
-    // TFT_099.DispColor(0, 0, 20, 24, RED);
-    
+    drawRect(0,0, TFT_WIDE, TFT_HIGH, BLACK);
 }
 
 void readMatrix()
 {
 
-
     int delayTime = 0;
     // iterate the columns
-    for (int colIndex = 0; colIndex < colCount; colIndex++) {
+    for (int colIndex = 0; colIndex < colCount; colIndex++)
+    {
         // col: set to output to low
         byte curCol = cols[colIndex];
         pinMode(curCol, OUTPUT);
         digitalWrite(curCol, LOW);
 
         // row: interate through the rows
-        for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+        for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+        {
             byte rowCol = rows[rowIndex];
             pinMode(rowCol, INPUT_PULLUP);
             delay(1); // arduino is not fast enought to switch input/output modes so wait 1 ms
@@ -336,9 +351,12 @@ void readMatrix()
             bool buttonPressed = (digitalRead(rowCol) == LOW);
 
             keys[colIndex][rowIndex] = buttonPressed;
-            if ((lastValue[colIndex][rowIndex] != buttonPressed)) {
+            if ((lastValue[colIndex][rowIndex] != buttonPressed))
+            {
                 changedValue[colIndex][rowIndex] = true;
-            } else {
+            }
+            else
+            {
                 changedValue[colIndex][rowIndex] = false;
             }
 
@@ -349,11 +367,11 @@ void readMatrix()
         pinMode(curCol, INPUT);
     }
 
-    if (keyPressed(0, 2)) {
+    if (keyPressed(0, 2))
+    {
         symbolSelected = true;
         // symbolSelected = !symbolSelected;
     }
-
 }
 
 bool keyPressed(int colIndex, int rowIndex)
@@ -371,49 +389,49 @@ bool isPrintableKey(int colIndex, int rowIndex)
     return keyboard_symbol[colIndex][rowIndex] != NULL || keyboard[colIndex][rowIndex] != NULL;
 }
 
-
 void printMatrix()
 {
 
-    for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-        for (int colIndex = 0; colIndex < colCount; colIndex++) {
+    for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+    {
+        for (int colIndex = 0; colIndex < colCount; colIndex++)
+        {
             // we only want to print if the key is pressed and it is a printable character
-            if (keyPressed(colIndex, rowIndex) && isPrintableKey(colIndex, rowIndex)) {
+            if (keyPressed(colIndex, rowIndex) && isPrintableKey(colIndex, rowIndex))
+            {
 
                 String toPrint;
-                if (symbolSelected) {
+                if (symbolSelected)
+                {
                     symbolSelected = false;
                     toPrint = String(keyboard_symbol[colIndex][rowIndex]);
-                } else {
+                }
+                else
+                {
                     toPrint = String(keyboard[colIndex][rowIndex]);
                 }
 
-                //alt
-                if (keyActive(0, 4)) {
+                // alt
+                if (keyActive(0, 4))
+                {
                     alt_active = true;
                     keys[0][4] = false;
                     return;
                 }
                 // keys 1,6 and 2,3 are Shift keys, so we want to upper case
-                if (case_locking || keyActive(1, 6)) {
+                if (case_locking || keyActive(1, 6))
+                {
                     toPrint.toUpperCase();
                 }
 
-                // char s[20];
-                // sprintf(s, "hello %d", OffsetX);
-                // can't draw rect??
-                // TFT_099.DispColor(0, OffsetX, TFT_HIGH, TFT_WIDE, GREEN);
-                // TFT_099.DispStr(s, 0, 22, WHITE, BLUE);
 
-
-              
-                if (OffsetX + GAP >= TFT_WIDE) {
+                if (OffsetX + GAP >= TFT_WIDE)
+                {
                     OffsetX = 0;
-                    // TFT_099.DispColor(0, 0, TFT_HIGH, TFT_WIDE, BLACK);
                     clear_screen();
                     Serial.print('CLEAR');
                 }
-               
+
                 char c[2];
                 strcpy(c, toPrint.c_str());
                 TFT_099.DispStr(c, OffsetX, 2, WHITE, BLACK);
@@ -422,10 +440,9 @@ void printMatrix()
                 Serial.println(c);
                 Serial.println("toPrint: " + toPrint);
                 bleKeyboard.print(toPrint);
-                
+
                 TFT_099.backlight(20);
                 previousMillis_1 = millis();
-
             }
         }
     }
