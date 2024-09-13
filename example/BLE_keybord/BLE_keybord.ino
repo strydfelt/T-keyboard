@@ -69,35 +69,38 @@ void symIndicator(bool sym_active)
     int x = 0;
     int y = 0;
     // activated indicator color
-    unsigned int fill = RED;
-    unsigned int font_color = WHITE;
+    unsigned int fill = BLACK;
+    unsigned int font_color = GRAY50;
     char txt[] = "SYM";
     int num_chars = sizeof(txt) / sizeof(txt[0]);
 
-    if (!sym_active)
+    if (sym_active)
     {
-        fill = BLACK;
-        font_color = GRAY25;
+        // fill = RED;
+        font_color = WHITE;
     }
 
     // indicator height
-    int height = 20;
+    // int height = 20;
 
     // assume indicator always there, showing status?
     // flush left
-    int length = 2 * INDICATOR_BORDER + 2 * INDICATOR_TEXT_PADDING + num_chars * GAP;
+    // int length = 2 * INDICATOR_BORDER + 2 * INDICATOR_TEXT_PADDING + num_chars * GAP;
 
     // draw box
     // left side
-    drawRect(x, y, x + INDICATOR_BORDER, y + height, RED);
+    // drawRect(x, y, x + INDICATOR_BORDER, y + height, RED);
     // right
-    drawRect(x + length - INDICATOR_BORDER, y, x + length, y + height, BLUE);
+    // drawRect(x + length - INDICATOR_BORDER, y, x + length, y + height, BLUE);
     // bottom
-    drawRect(x, y, x + length, y + INDICATOR_BORDER, GREEN);
+    // drawRect(x + INDICATOR_BORDER, y, x + length - INDICATOR_BORDER, y + INDICATOR_BORDER, GREEN);
     //  top
-    drawRect(x, y + height, x + length, y + height + INDICATOR_BORDER, GRAY);
+    // drawRect(x + INDICATOR_BORDER, y + height, x + length - INDICATOR_BORDER, y + height + INDICATOR_BORDER, GRAY);
 
-    TFT_099.DispStr(txt, x + INDICATOR_TEXT_PADDING + INDICATOR_BORDER, y + height, font_color, fill);
+    // draw "accent" line
+     drawRect(x, y, x + num_chars * GAP - INDICATOR_TEXT_PADDING , y + INDICATOR_BORDER, font_color);
+
+    TFT_099.DispStr(txt, x + INDICATOR_TEXT_PADDING, y + 20, font_color, fill);
 }
 
 void setup()
@@ -234,10 +237,9 @@ void loop()
     if (alt_active && keyPressed(3, 4))
     { // alt+b   Change keyboard backlight status
         alt_active = false;
-        clear_screen();
+        // clear_screen();
         keyborad_BL_state = !keyborad_BL_state;
         set_keyboard_BL(keyborad_BL_state);
-        // clear_screen();
     }
 
     if (keyPressed(2, 3))
@@ -252,7 +254,6 @@ void loop()
         { // No keyboard for 20 seconds. Turn off the screen backlight
             TFT_099.backlight(0);
             previousMillis_1 = millis();
-            ;
         }
 
         if (display_connected)
@@ -270,6 +271,7 @@ void loop()
         // key 3,3 is the enter key
         if (keyPressed(3, 3))
         {
+            previousMillis_1 = millis();
             clear_screen();
             Serial.println();
             bleKeyboard.println();
@@ -288,7 +290,7 @@ void loop()
 
             // clears the last typed char on the top row
             drawRect(OffsetX, 20, OffsetX + GAP, 40, BLACK);
-        
+
             bleKeyboard.press(KEY_BACKSPACE);
         }
         // SHIFT
@@ -326,7 +328,7 @@ void set_keyboard_BL(bool state)
 void clear_screen()
 {
     OffsetX = 0;
-    drawRect(0,0, TFT_WIDE, TFT_HIGH, BLACK);
+    drawRect(0, 0, TFT_WIDE, TFT_HIGH, BLACK);
 }
 
 void readMatrix()
@@ -423,7 +425,6 @@ void printMatrix()
                 {
                     toPrint.toUpperCase();
                 }
-
 
                 if (OffsetX + GAP >= TFT_WIDE)
                 {
